@@ -1,0 +1,1121 @@
+Yes. I would add a **single “Version Completion Prompt”** to the master specification so an AI coding agent doesn't stop at V1 or build disconnected versions.
+
+The important change is: **all versions should be architected now, but implemented progressively behind stable interfaces.** That prevents V2/V3 from requiring a rewrite of the core.
+
+## Add this to the master prompt
+
+```text
+# MESHTRAIN — COMPLETE VERSION ROADMAP & IMPLEMENTATION COMPLETION PROMPT
+
+You are building MeshTrain as a production-grade, open-source,
+BitTorrent-inspired decentralized AI compute network.
+
+IMPORTANT:
+Do NOT implement only V1.
+Do NOT create disconnected future-version mockups.
+Design the architecture and interfaces for ALL versions below now,
+then implement them incrementally in dependency order.
+
+Every version must preserve backward compatibility with the previous version.
+
+The fundamental principle is:
+
+    THE NETWORK IS THE CLUSTER.
+
+There must be NO mandatory centralized GPU infrastructure.
+
+A MeshTrain node must be capable of acting as:
+
+    PEER
+    WORKER
+    SERVER
+    SCHEDULER
+    STORAGE PROVIDER
+    VERIFIER
+    OPTIONAL COORDINATOR
+
+depending on its role and available resources.
+
+============================================================
+0. NON-NEGOTIABLE ARCHITECTURAL PRINCIPLES
+============================================================
+
+1. Decentralized-first.
+2. Local-first.
+3. Peer-to-peer by default.
+4. No mandatory cloud.
+5. No mandatory central scheduler.
+6. No mandatory central database.
+7. No mandatory central model server.
+8. No blockchain/token dependency.
+9. No Kubernetes dependency.
+10. No Redis/Kafka dependency for the core network.
+11. Every node must be independently runnable.
+12. Public infrastructure must be optional.
+13. Community-operated infrastructure must be supported.
+14. NAT traversal must be a first-class subsystem.
+15. Network topology must influence scheduling.
+16. Failure must be expected, not exceptional.
+17. Checkpoints must be recoverable.
+18. Artifacts must be content-addressed.
+19. Security must be zero-trust.
+20. APIs/protocols must be versioned.
+21. Lightweight by default.
+22. Heavy functionality must be modular/plugin-based.
+23. Never sacrifice the core P2P architecture merely to simplify a feature.
+24. Never pretend that arbitrary Internet GPUs are equivalent to an
+    intra-node NCCL cluster.
+
+============================================================
+1. VERSION 0 — LOCAL NODE / SINGLE GPU
+============================================================
+
+Goal:
+
+Make MeshTrain useful even when only ONE machine exists.
+
+Implement:
+
+    meshtrain node start
+    meshtrain status
+    meshtrain benchmark
+    meshtrain model
+    meshtrain infer
+    meshtrain train
+    meshtrain tune
+
+Capabilities:
+
+    GPU detection
+    CPU/RAM detection
+    CUDA detection
+    PyTorch runtime
+    model loading
+    local inference
+    local fine-tuning
+    LoRA
+    QLoRA
+    checkpointing
+    local content-addressed storage
+    metrics
+    CLI
+    localhost API
+
+Architecture:
+
+    CLI
+      ↓
+    Local API
+      ↓
+    MeshTrain Node
+      ↓
+    Runtime
+      ↓
+    GPU
+
+No network required.
+
+Acceptance:
+
+    A user can install MeshTrain and run useful AI workloads
+    completely offline.
+
+============================================================
+2. VERSION 1 — TWO-NODE P2P MESH
+============================================================
+
+Goal:
+
+Two machines can discover and communicate directly.
+
+Implement:
+
+    peer identity
+    cryptographic identity
+    peer discovery
+    handshake
+    encrypted transport
+    QUIC
+    DHT
+    peer capability advertisement
+    heartbeat
+    peer health
+    direct task execution
+    result verification
+
+Architecture:
+
+    Node A
+       ↕
+    P2P
+       ↕
+    Node B
+
+Required:
+
+    DHT
+    peer IDs
+    signed capability advertisements
+    protocol versioning
+    connection lifecycle
+    retries
+    timeout
+    backpressure
+
+Acceptance:
+
+    Two computers on different networks can discover/connect
+    without a central compute server.
+
+============================================================
+3. VERSION 2 — REAL INTERNET MESH
+============================================================
+
+Goal:
+
+Make MeshTrain work across real consumer Internet conditions.
+
+Implement:
+
+    NAT detection
+    hole punching
+    relay fallback
+    connection migration
+    NAT timeout handling
+    CGNAT compatibility where possible
+    firewall-aware connection strategy
+    peer reachability scoring
+    latency measurement
+    bandwidth measurement
+    jitter measurement
+    packet-loss measurement
+
+Architecture:
+
+    Peer A
+      │
+      ├── direct
+      ├── hole punch
+      └── relay fallback
+                │
+                ▼
+              Peer B
+
+Important:
+
+Relay nodes MUST NOT become mandatory compute servers.
+
+A relay only forwards traffic when direct connectivity fails.
+
+Acceptance:
+
+    Nodes behind ordinary home routers can participate.
+
+============================================================
+4. VERSION 3 — DECENTRALIZED PEER DISCOVERY
+============================================================
+
+Goal:
+
+Remove dependence on a centralized peer registry.
+
+Implement:
+
+    DHT
+    peer announcements
+    capability records
+    model provider records
+    job advertisements
+    TTL
+    record expiration
+    signed records
+    peer reputation metadata
+    stale-peer cleanup
+
+Example:
+
+    DHT
+     │
+     ├── GPU providers
+     ├── model providers
+     ├── relay providers
+     ├── compute peers
+     └── storage peers
+
+Acceptance:
+
+    A new node can join the network using only bootstrap information
+    and subsequently discover peers through the distributed network.
+
+============================================================
+5. VERSION 4 — BITTORRENT-STYLE MODEL/DATA DISTRIBUTION
+============================================================
+
+Goal:
+
+Make large AI artifacts distributed instead of depending on
+one model server.
+
+Implement:
+
+    content-addressed artifacts
+    chunking
+    manifests
+    chunk hashes
+    parallel downloads
+    peer providers
+    upload/download scheduling
+    integrity verification
+    resumable transfers
+    local caching
+    replication
+
+Architecture:
+
+    MODEL
+      ↓
+    manifest
+      ↓
+    chunks
+      ↓
+    DHT
+      ↓
+    Peer A ──┐
+    Peer B ──┼──> requester
+    Peer C ──┘
+
+A model must be identifiable by content hash.
+
+Acceptance:
+
+    A model can be obtained from multiple peers and verified
+    without trusting a single server.
+
+============================================================
+6. VERSION 5 — DISTRIBUTED INFERENCE / MESHSERVE
+============================================================
+
+Goal:
+
+Turn the network into a distributed inference fabric.
+
+Implement:
+
+    model discovery
+    model availability
+    GPU capability matching
+    VRAM matching
+    latency-aware routing
+    throughput-aware routing
+    batching
+    request routing
+    model caching
+    replica selection
+    pipeline inference
+    fault recovery
+
+Routing:
+
+    User
+      ↓
+    Local MeshTrain node
+      ↓
+    DHT
+      ↓
+    candidate peers
+      ↓
+    scheduler
+      ↓
+    selected GPU
+      ↓
+    inference
+      ↓
+    result
+
+Support:
+
+    local inference
+    remote inference
+    replicated inference
+    pipeline inference
+    regional inference
+
+Provide:
+
+    OpenAI-compatible API
+
+but it must be optional.
+
+Acceptance:
+
+    A user can consume remote GPU inference without knowing
+    where the GPU physically exists.
+
+============================================================
+7. VERSION 6 — DISTRIBUTED FINE-TUNING / MESHTUNE
+============================================================
+
+Goal:
+
+Enable practical distributed fine-tuning over heterogeneous GPUs.
+
+Primary methods:
+
+    LoRA
+    QLoRA
+    adapter training
+    adapter aggregation
+    federated-style updates
+
+Architecture:
+
+    Dataset
+       ↓
+    training plan
+       ↓
+    peer discovery
+       ↓
+    capability filtering
+       ↓
+    topology-aware scheduling
+       ↓
+    regional workers
+       ↓
+    local adapter updates
+       ↓
+    aggregation
+       ↓
+    evaluation
+       ↓
+    checkpoint
+
+Do NOT initially assume synchronized global SGD.
+
+Prioritize:
+
+    asynchronous
+    federated
+    adapter-based
+    hierarchical
+    fault-tolerant
+
+training.
+
+Acceptance:
+
+    GPUs with different VRAM and performance characteristics
+    can participate without requiring identical hardware.
+
+============================================================
+8. VERSION 7 — HIERARCHICAL REGIONAL MESH
+============================================================
+
+Goal:
+
+Solve the fundamental Internet latency problem.
+
+Never treat:
+
+    Hyderabad ↔ Germany
+
+as equivalent to:
+
+    GPU A ↔ GPU B
+
+inside one server.
+
+Architecture:
+
+                 GLOBAL MESH
+                      │
+        ┌─────────────┼─────────────┐
+        │             │             │
+      INDIA         EUROPE          USA
+        │             │             │
+     REGION        REGION         REGION
+        │             │             │
+      GPUs          GPUs           GPUs
+
+Implement:
+
+    local cluster
+    regional cluster
+    global coordination
+    regional schedulers
+    hierarchical aggregation
+    regional checkpoints
+    WAN-aware scheduling
+    bandwidth-aware synchronization
+
+Strategy:
+
+    fast network:
+        tighter coupling
+
+    medium network:
+        pipeline / batched communication
+
+    slow network:
+        asynchronous / hierarchical aggregation
+
+Acceptance:
+
+    The network remains useful as geographic distance increases.
+
+============================================================
+9. VERSION 8 — ELASTIC DISTRIBUTED TRAINING
+============================================================
+
+Goal:
+
+Workers may join and leave during training.
+
+Implement:
+
+    elastic membership
+    worker registration
+    worker removal
+    heartbeat
+    failure detection
+    task reassignment
+    checkpoint recovery
+    dynamic world size
+    scheduler re-planning
+    straggler detection
+    worker replacement
+
+Example:
+
+    A B C D E
+
+    C fails
+
+    A B D E
+      ↓
+    scheduler
+      ↓
+    replace/rebalance
+      ↓
+    continue
+
+Training must NOT restart from zero after a worker failure.
+
+============================================================
+10. VERSION 9 — VERIFIED COMPUTE
+============================================================
+
+Goal:
+
+Do not blindly trust unknown GPUs.
+
+Implement:
+
+    benchmark verification
+    result verification
+    redundant execution
+    deterministic task checks
+    challenge tasks
+    checksum verification
+    checkpoint validation
+    peer reputation
+    anomaly detection
+
+Trust model:
+
+    identity
+       +
+    history
+       +
+    benchmark
+       +
+    task verification
+       +
+    reputation
+
+Never equate:
+
+    "peer claims result"
+
+with:
+
+    "result is valid."
+
+Acceptance:
+
+    Malicious or unreliable workers can be detected and isolated.
+
+============================================================
+11. VERSION 10 — ZERO-TRUST PUBLIC MESH
+============================================================
+
+Goal:
+
+Allow completely unknown Internet participants.
+
+Implement:
+
+    cryptographic identities
+    authenticated sessions
+    encrypted transport
+    capability authorization
+    sandboxed workloads
+    resource limits
+    network isolation
+    dataset access policies
+    secret isolation
+    signed manifests
+    signed jobs
+    signed checkpoints
+    malicious-peer isolation
+
+Security principles:
+
+    NEVER trust peer input
+    NEVER execute arbitrary peer code directly
+    NEVER expose private datasets unnecessarily
+    NEVER expose credentials to workers
+    NEVER assume a peer is honest
+
+Acceptance:
+
+    Public participation is possible without giving peers
+    unrestricted access to the user's machine or data.
+
+============================================================
+12. VERSION 11 — PRIVATE / ENTERPRISE MESH
+============================================================
+
+Goal:
+
+Allow universities, companies and research labs to deploy
+their own private MeshTrain networks.
+
+Support:
+
+    private DHT
+    private bootstrap
+    organization identity
+    allowlists
+    denylists
+    private model registry
+    private storage
+    private schedulers
+    VPN-compatible networking
+    policy engine
+
+Example:
+
+    UNIVERSITY MESH
+
+    Lab A
+       │
+    Lab B ─── Lab C
+       │
+    GPU Cluster
+
+No public Internet peers required.
+
+============================================================
+13. VERSION 12 — COMMUNITY FEDERATED MESH
+============================================================
+
+Goal:
+
+Allow communities to operate infrastructure together.
+
+Roles:
+
+    compute provider
+    relay provider
+    bootstrap provider
+    storage provider
+    verifier
+    model provider
+
+No role should require control over the entire network.
+
+Allow:
+
+    universities
+    research labs
+    communities
+    individuals
+    companies
+
+to operate infrastructure.
+
+============================================================
+14. VERSION 13 — LARGE-SCALE MIXED WORKLOAD MESH
+============================================================
+
+Support:
+
+    inference
+    fine-tuning
+    federated learning
+    batch inference
+    embedding generation
+    evaluation
+    model benchmarking
+    dataset processing
+    research experiments
+
+Workloads become scheduler plugins.
+
+Example:
+
+    workload type
+         ↓
+    requirements
+         ↓
+    scheduler
+         ↓
+    topology
+         ↓
+    peer selection
+
+============================================================
+15. VERSION 14 — ADVANCED MODEL PARALLELISM
+============================================================
+
+Experimental.
+
+Only implement after V1-V13 are stable.
+
+Investigate:
+
+    tensor parallelism
+    pipeline parallelism
+    expert parallelism
+    mixture-of-experts
+    sharded inference
+    distributed KV cache
+    heterogeneous model partitioning
+
+IMPORTANT:
+
+Do not force these techniques onto high-latency Internet links.
+
+The scheduler must determine whether topology supports them.
+
+============================================================
+16. VERSION 15 — GLOBAL AI COMPUTE FABRIC
+============================================================
+
+Final long-term vision:
+
+MeshTrain becomes a general decentralized AI compute network.
+
+Architecture:
+
+                       GLOBAL MESH
+                            │
+       ┌────────────────────┼────────────────────┐
+       │                    │                    │
+    INFERENCE            TRAINING             DATA
+       │                    │                    │
+       └────────────────────┼────────────────────┘
+                            │
+                       P2P NETWORK
+                            │
+      ┌───────────────┬─────┴─────┬───────────────┐
+      │               │           │               │
+   Consumer         University   Company        Research
+     GPU               GPU        cluster         lab
+      │               │           │               │
+      └───────────────┴───────────┴───────────────┘
+
+The network itself becomes the compute fabric.
+
+============================================================
+17. VERSION COMPATIBILITY
+============================================================
+
+Every release must preserve:
+
+    node protocol compatibility
+    model manifest compatibility
+    checkpoint compatibility
+    job schema compatibility
+    API compatibility
+    CLI compatibility
+
+Use:
+
+    protocol_version
+    api_version
+    manifest_version
+    checkpoint_version
+
+Example:
+
+    meshtrain://v1/peer
+    meshtrain://v2/peer
+
+Nodes must negotiate compatible versions.
+
+============================================================
+18. FEATURE FLAGS
+============================================================
+
+Do NOT create separate codebases for each version.
+
+Use capability flags:
+
+    P2P_V1
+    NAT_TRAVERSAL
+    DISTRIBUTED_STORAGE
+    MESH_INFERENCE
+    MESHTUNE
+    HIERARCHICAL_TRAINING
+    VERIFIED_COMPUTE
+    PRIVATE_MESH
+    ADVANCED_PARALLELISM
+
+Each feature must have:
+
+    interface
+    implementation
+    tests
+    benchmark
+    documentation
+    CLI exposure where appropriate
+
+============================================================
+19. VERSION IMPLEMENTATION ORDER
+============================================================
+
+Implement in this exact dependency order:
+
+    V0
+     ↓
+    V1
+     ↓
+    V2
+     ↓
+    V3
+     ↓
+    V4
+     ↓
+    V5
+     ↓
+    V6
+     ↓
+    V7
+     ↓
+    V8
+     ↓
+    V9
+     ↓
+    V10
+     ↓
+    V11
+     ↓
+    V12
+     ↓
+    V13
+     ↓
+    V14
+     ↓
+    V15
+
+However:
+
+ARCHITECTURE FOR ALL VERSIONS MUST EXIST FROM THE START.
+
+Do not implement V14/V15 functionality prematurely.
+
+Create stable interfaces and extension points now.
+
+============================================================
+20. REQUIRED DELIVERABLES
+============================================================
+
+Produce all of the following:
+
+PRODUCT:
+
+    PRD
+    user personas
+    use cases
+    user stories
+    requirements
+    feature matrix
+    version roadmap
+    acceptance criteria
+
+TECHNICAL:
+
+    TRD
+    architecture
+    component architecture
+    protocol architecture
+    API specification
+    P2P protocol specification
+    storage specification
+    scheduler specification
+    security architecture
+    verification architecture
+
+NETWORK:
+
+    DHT design
+    peer discovery
+    NAT traversal
+    relay
+    hole punching
+    topology measurement
+    peer scoring
+    failure detection
+
+AI:
+
+    inference architecture
+    fine-tuning architecture
+    distributed training architecture
+    LoRA/QLoRA
+    adapter aggregation
+    checkpointing
+    model sharding
+    model distribution
+
+OPERATIONS:
+
+    installation
+    node deployment
+    bootstrap deployment
+    relay deployment
+    private mesh deployment
+    community infrastructure deployment
+
+DEVELOPER:
+
+    SDK
+    CLI
+    API
+    protobuf schemas
+    plugin interfaces
+    examples
+    contribution guide
+
+QUALITY:
+
+    unit tests
+    integration tests
+    P2P tests
+    NAT tests
+    failure tests
+    security tests
+    benchmark suite
+    simulation environment
+
+OPEN SOURCE:
+
+    LICENSE
+    GOVERNANCE
+    CONTRIBUTING
+    CODE_OF_CONDUCT
+    SECURITY
+    ROADMAP
+    issue templates
+    PR templates
+
+============================================================
+21. TESTING THE ENTIRE EVOLUTION
+============================================================
+
+Create a simulation environment capable of generating:
+
+    2 peers
+    10 peers
+    100 peers
+    1,000 peers
+    10,000 simulated peers
+
+Simulate:
+
+    low bandwidth
+    high latency
+    packet loss
+    NAT
+    peer churn
+    GPU failure
+    malicious workers
+    slow workers
+    disconnected workers
+    model corruption
+    checkpoint corruption
+    regional outages
+
+Measure:
+
+    throughput
+    latency
+    utilization
+    recovery time
+    communication overhead
+    scheduling quality
+    GPU idle time
+    checkpoint recovery
+    network efficiency
+
+============================================================
+22. BENCHMARK AGAINST EXISTING SYSTEMS
+============================================================
+
+Create reproducible benchmarks against appropriate baselines,
+including where technically applicable:
+
+    PyTorch Distributed
+    PyTorch Elastic
+    Hivemind
+    Petals
+    federated-learning approaches
+    conventional cloud GPU orchestration
+
+Do NOT make unsupported claims such as:
+
+    "MeshTrain is faster"
+
+unless benchmark evidence proves it.
+
+Compare:
+
+    architecture
+    decentralization
+    peer discovery
+    NAT traversal
+    heterogeneous hardware
+    Internet topology
+    inference
+    fine-tuning
+    training
+    fault tolerance
+    storage
+    verification
+    ease of deployment
+
+============================================================
+23. DEFINITION OF DONE
+============================================================
+
+A version is NOT complete merely because code compiles.
+
+Each version requires:
+
+    implementation
+    tests
+    integration tests
+    documentation
+    CLI/API
+    benchmarks
+    failure tests
+    security review
+    example
+    migration notes
+    versioned protocol
+    reproducible demo
+
+For every version generate:
+
+    WHAT WAS BUILT
+    WHY IT EXISTS
+    ARCHITECTURE
+    DATA FLOW
+    LOGIC FLOW
+    API
+    PROTOCOL
+    FOLDER CHANGES
+    TESTS
+    BENCHMARKS
+    LIMITATIONS
+    SECURITY RISKS
+    MIGRATION FROM PREVIOUS VERSION
+
+============================================================
+24. FINAL CODING INSTRUCTION
+============================================================
+
+Build MeshTrain as ONE coherent system.
+
+Do NOT create:
+
+    v1 codebase
+    v2 separate codebase
+    v3 separate codebase
+
+Instead create:
+
+    one MeshTrain core
+
+with:
+
+    stable interfaces
+    versioned protocols
+    modular subsystems
+    feature flags
+    plugin architecture
+    backward compatibility
+
+The final system must be capable of evolving:
+
+    single GPU
+        ↓
+    two-peer mesh
+        ↓
+    Internet mesh
+        ↓
+    distributed inference
+        ↓
+    distributed fine-tuning
+        ↓
+    regional training
+        ↓
+    elastic training
+        ↓
+    verified public compute
+        ↓
+    private/community meshes
+        ↓
+    global AI compute fabric
+
+without architectural rewrites.
+
+FINAL PRINCIPLE:
+
+    "Start on one GPU.
+     Join another GPU.
+     Join 100.
+     Join 10,000.
+     The architecture stays the same.
+     Only the topology, scheduling and execution strategy change."
+```
+
+### One additional thing I'd add to your original repository
+
+Create this:
+
+```text
+docs/
+└── versions/
+    ├── V0_LOCAL.md
+    ├── V1_P2P.md
+    ├── V2_INTERNET.md
+    ├── V3_DHT.md
+    ├── V4_DISTRIBUTED_STORAGE.md
+    ├── V5_MESHSERVE.md
+    ├── V6_MESHTUNE.md
+    ├── V7_HIERARCHICAL.md
+    ├── V8_ELASTIC.md
+    ├── V9_VERIFIED.md
+    ├── V10_ZERO_TRUST.md
+    ├── V11_PRIVATE.md
+    ├── V12_COMMUNITY.md
+    ├── V13_WORKLOADS.md
+    ├── V14_MODEL_PARALLELISM.md
+    └── V15_GLOBAL_FABRIC.md
+```
+
+That gives you a **single-shot master architecture + implementation roadmap**, while the coding agent can actually build the system incrementally.
+
+Your existing document already had the right core progression around MeshServe, MeshTune, distributed training, topology awareness, fault recovery, trust and security.  The prompt above turns those ideas into a **complete V0→V15 product evolution**, while enforcing the decentralized architecture we established. 

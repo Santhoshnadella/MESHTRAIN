@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package meshtrain.protocols;
+
+message PinRequest {
+  string chunk_hash = 1;
+  bytes data = 2;
+  string sender = 3;
+}
+
+message PinResponse {
+  string chunk_hash = 1;
+  bool success = 2;
+}

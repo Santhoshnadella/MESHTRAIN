@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MeshTrain</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="topbar">
+      <div class="logo">MeshTrain</div>
+      <div class="stats">
+        <div class="stat-pill"><span id="peers">0</span> Peers</div>
+        <div class="stat-pill accent"><span id="balance">0</span> MeshCoin</div>
+      </div>
+    </header>
+    
+    <main class="content">
+      <div class="glass-panel">
+        <h2>Run Inference</h2>
+        <div class="input-group">
+          <label>Model</label>
+          <input type="text" id="model" value="gpt2">
+        </div>
+        <div class="input-group">
+          <label>Modality</label>
+          <select id="modality">
+            <option value="text">Text Generation</option>
+            <option value="image">Stable Diffusion (Image)</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Prompt</label>
+          <textarea id="prompt" rows="3">The future of decentralized AI is...</textarea>
+        </div>
+        <button id="submitBtn" onclick="runInference()">Dispatch to Network</button>
+      </div>
+      
+      <div class="glass-panel result-panel">
+        <h2>Result</h2>
+        <div id="resultBox" class="result-box">Waiting for input...</div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    async function updateStats() {
+      try {
+        const res = await fetch('http://localhost:8000/api/status');
+        const data = await res.json();
+        document.getElementById('peers').innerText = data.connected_peers;
+        document.getElementById('balance').innerText = data.balance;
+      } catch (e) {
+        console.error("API Bridge offline.");
+      }
+    }
+    
+    setInterval(updateStats, 2000);
+    updateStats();
+
+    async function runInference() {
+      const model = document.getElementById('model').value;
+      const prompt = document.getElementById('prompt').value;
+      const modality = document.getElementById('modality').value;
+      const resultBox = document.getElementById('resultBox');
+      const btn = document.getElementById('submitBtn');
+      
+      resultBox.innerText = "Routing to optimal peer... (Waiting for Consensus Verification)";
+      resultBox.classList.add("pulsing");
+      btn.disabled = true;
+      
+      try {
+        const res = await fetch('http://localhost:8000/api/infer', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({model, prompt, modality})
+        });
+        const data = await res.json();
+        resultBox.innerText = data.result;
+      } catch (e) {
+        resultBox.innerText = "Error connecting to network.";
+      } finally {
+        resultBox.classList.remove("pulsing");
+        btn.disabled = false;
+        updateStats(); // refresh balance
+      }
+    }
+  </script>
+</body>
+</html>

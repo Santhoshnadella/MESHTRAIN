@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package meshtrain.protocols;
+
+message Handshake {
+  string peer_id = 1;
+  string version = 2;
+  int32 listen_port = 3;
+}
+
+message HandshakeAck {
+  string peer_id = 1;
+  string status = 2;
+}
+
+message Ping {
+  int64 timestamp = 1;
+}
+
+message Pong {
+  int64 timestamp = 1;
+}

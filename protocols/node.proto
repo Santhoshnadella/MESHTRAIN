@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package meshtrain.protocols;
+
+message HardwareCapability {
+  string gpu = 1;
+  float vram_gb = 2;
+  int32 compute_score = 3;
+  string backend = 4;
+  int32 device_count = 5;
+}
+
+message NodeInfo {
+  string peer_id = 1;
+  string version = 2;
+  HardwareCapability hardware = 3;
+}

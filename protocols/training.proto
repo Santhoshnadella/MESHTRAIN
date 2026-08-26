@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package meshtrain.protocols;
+
+message TrainingRequest {
+  string request_id = 1;
+  string sender = 2;
+  string model = 3;
+  string dataset_manifest_hash = 4;
+}
+
+message TrainingResult {
+  string request_id = 1;
+  string status = 2;
+  bytes lora_adapter_weights = 3;
+  string error_message = 4;
+}

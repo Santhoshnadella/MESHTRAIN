@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package meshtrain.protocols;
+
+message DataRequest {
+  string chunk_hash = 1;
+}
+
+message DataResponse {
+  string chunk_hash = 1;
+  bytes data = 2;
+  bool found = 3;
+}
