@@ -1,6 +1,12 @@
-![MeshTrain Architecture Banner](file:///C:/Users/Santosh/.gemini/antigravity-ide/brain/f6492ca5-9cdc-44b4-8229-37662fdfaa30/meshtrain_readme_banner_v2_1787741883732.jpg)
+![MeshTrain Architecture Banner](banner.jpg)
 
 # MeshTrain: The Decentralized AI Compute Mesh
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Status](https://img.shields.io/badge/Status-Beta-brightgreen.svg)]()
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)]()
+
 
 Welcome to **MeshTrain**, a production-grade, zero-trust, peer-to-peer network designed to democratize AI compute. MeshTrain allows anyone to run or train massive AI models (like LLMs or Stable Diffusion) by dynamically borrowing GPU power from a global network of peers, creating a giant decentralized supercomputer.
 
@@ -129,9 +135,9 @@ MeshTrain is being built in structured phases. Here is the current progress:
 - **V10 (Multi-Modal)**: Binary payload streaming to support `diffusers` image generation alongside text.
 - **V11 (MeshProtect)**: Sandbox environment locking down `transformers` execution.
 - **V12 (Premium UI)**: Native Electron desktop application with a FastAPI bridge.
+- **V13 (Federated Learning)**: `FederatedAverager` for simultaneously training across multi-node swarms and merging LoRA weights using FedAvg.
+- **V14 (NAT Traversal)**: Implemented AutoNAT and Circuit Relay V2 for bypassing strict enterprise firewalls.
+- **V15 (Containerization)**: Complete Docker swarm deployment and packaging as a global `pip` library.
 
 ### ⏳ Still Pending (Future Roadmap)
 - **True Blockchain Integration**: Currently, MeshCoins are tracked locally via receipts. The next step is tying the `CreditLedger` to a real Solana or Ethereum smart contract for real-world financial incentives.
-- **Federated Learning Pipelines**: Expanding from simple LoRA to true federated gradient averaging across 100+ nodes simultaneously.
-- **NAT Traversal Optimization**: While libp2p handles basic NATs, implementing dedicated TURN/Relay servers for extremely strict enterprise firewalls is pending.
-- **Containerization**: Wrapping the entire worker node in a Docker image for one-click deployment.
