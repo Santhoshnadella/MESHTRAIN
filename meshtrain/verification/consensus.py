@@ -1,29 +1,40 @@
-import difflib
+import hashlib
 
 class ConsensusEngine:
-    """Provides Proof of Compute by verifying multiple inference results (V8)."""
+    """Provides Proof of Compute by verifying cryptographic hashes of multi-party inference results (V12)."""
     
-    def __init__(self, similarity_threshold: float = 0.80):
-        self.similarity_threshold = similarity_threshold
+    def __init__(self):
+        pass
         
-    def verify(self, result_a: str, result_b: str) -> dict:
+    def _hash_result(self, result: str) -> str:
+        """Returns the SHA-256 hash of the result string."""
+        return hashlib.sha256(result.encode('utf-8')).hexdigest()
+        
+    def verify(self, results: list) -> dict:
         """
-        Compares two text generations. Returns a dict with 'verified' boolean
-        and the similarity score.
+        Takes a list of result strings from multiple peers for the same job.
+        Verifies consensus by checking if the majority of hashes match.
+        Assumes the job was run with a deterministic seed.
         """
-        if not result_a or not result_b:
-            return {"verified": False, "score": 0.0, "reason": "Missing result"}
+        if not results or len(results) < 2:
+            return {"verified": False, "consensus_hash": None, "reason": "Not enough results for consensus"}
             
-        # Calculate structural similarity using SequenceMatcher
-        # LLMs generate slightly different text, but structure/semantics should be similar
-        matcher = difflib.SequenceMatcher(None, result_a, result_b)
-        score = matcher.ratio()
+        # Tally hashes
+        hash_tally = {}
+        for res in results:
+            h = self._hash_result(res)
+            hash_tally[h] = hash_tally.get(h, 0) + 1
+            
+        # Find the most common hash
+        best_hash = max(hash_tally, key=hash_tally.get)
+        max_votes = hash_tally[best_hash]
         
-        is_verified = score >= self.similarity_threshold
+        # We need a strict majority
+        is_verified = max_votes > (len(results) / 2)
         
         return {
             "verified": is_verified,
-            "score": score,
-            "result_a": result_a,
-            "result_b": result_b
+            "consensus_hash": best_hash,
+            "votes": max_votes,
+            "total_peers": len(results)
         }

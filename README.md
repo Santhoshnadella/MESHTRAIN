@@ -70,10 +70,10 @@ When the remote node receives your request, it doesn't just blindly run code. Th
 
 ### 5. Proof of Compute & Consensus Verification
 How do you know the remote node didn't just return garbage text to steal your MeshCoins? 
-MeshTrain routes your prompt to **two different peers simultaneously**. When both results return, your local `ConsensusEngine` mathematically calculates their structural similarity using sequence matching algorithms. If the outputs match, the compute is mathematically verified!
+MeshTrain routes your prompt to **multiple peers simultaneously**. The local `ConsensusEngine` mathematically calculates the `SHA-256` hash of their responses. Only if there is a strict cryptographic majority matching hash is the compute verified!
 
-### 6. Economy & MeshCoin
-Once the compute is verified, your node's local SQLite `CreditLedger` cryptographically signs a receipt and credits the remote worker's account with a **MeshCoin**. (1 Coin for Inference, 50 Coins for Training).
+### 6. Economy & MeshCoin (Cryptographic Ledger)
+Once the compute is verified, the transaction is cryptographically signed using `ed25519`. The `SignedTransactionLedger` verifies the signature and writes it to the distributed log, crediting the remote worker with MeshCoins automatically priced by the `DynamicPricer` based on model size and token length.
 
 ---
 
@@ -82,8 +82,9 @@ Once the compute is verified, your node's local SQLite `CreditLedger` cryptograp
 MeshTrain operates on a **Zero-Trust** philosophy. Because you are executing AI models from anonymous nodes across the internet, security is paramount:
 
 1. **Encrypted Transport**: All peer-to-peer traffic is multiplexed and encrypted using `libp2p`'s native SECIO / TLS-like handshakes. Eavesdropping on dataset transmission is mathematically impossible.
-2. **MeshProtect (Sandbox Execution)**: Loading a model in Python (via `transformers`) is notoriously dangerous because models can contain malicious pickled Python code. When a worker node receives a request, the `MeshNode` execution engine is wrapped in a `SecurityContext` that forcefully strips `trust_remote_code=True` at the environment level. Remote arbitrary code execution (RCE) is blocked.
-3. **Consensus Verification (Proof of Compute)**: To prevent a malicious worker node from returning random garbage text to farm MeshCoins, the `InferenceRouter` utilizes a Dual-Routing protocol. It sends the prompt to Node A and Node B. The local `ConsensusEngine` mathematically analyzes the structural similarity of the two responses using `difflib.SequenceMatcher`. If the threshold drops below 85%, the results are rejected, the nodes are flagged, and no MeshCoins are minted.
+2. **MeshProtect (Process Sandbox)**: Loading a model in Python is notoriously dangerous. When a worker node receives a request, the `MeshNode` execution engine spawns a fully isolated native OS process via `multiprocessing`. If the model crashes, OOMs, or is malicious, the child process is killed without affecting the main node.
+3. **Model Provenance (Signature Verification)**: Before loading any weights, the `ModelVerifier` ensures the `SHA-256` hash of the model precisely matches the `ed25519` cryptographic signature of its trusted author.
+4. **Cryptographic Hash Consensus (Proof of Compute)**: To prevent a malicious worker node from returning random garbage text to farm MeshCoins, the `InferenceRouter` utilizes a multi-routing protocol. The local `ConsensusEngine` checks for a strict `SHA-256` hash majority among the peers. If they don't match, the results are rejected, the nodes' reputations are penalized, and no MeshCoins are minted.
 
 ---
 
@@ -189,14 +190,15 @@ MeshTrain is being built in structured phases. Here is the current progress:
 - **V0-V5 (Foundations & Networking)**: Kademlia DHT, `libp2p` secure encrypted streams, auto-reconnects, and hardware benchmarking.
 - **V6 (MeshTune)**: Distributed LoRA fine-tuning utilizing HuggingFace `peft`. Remote nodes train adapters and stream the binary weights back over the network.
 - **V7 (MeshDrive)**: Content-addressed storage for chunking and replicating datasets across the P2P swarm.
-- **V8 (Proof of Compute)**: `ConsensusEngine` that dual-routes jobs and verifies similarity to prevent fraud.
-- **V9 (Tokenomics)**: Internal SQLite `CreditLedger` for issuing and tracking MeshCoins.
+- **V8 (Proof of Compute)**: `ConsensusEngine` utilizing `SHA-256` cryptographic hash majority voting.
+- **V9 (Tokenomics)**: `SignedTransactionLedger` with `ed25519` cryptographic signatures replacing the old SQLite mock.
 - **V10 (Multi-Modal)**: Binary payload streaming to support `diffusers` image generation alongside text.
-- **V11 (MeshProtect)**: Sandbox environment locking down `transformers` execution.
-- **V12 (Premium UI)**: Native Electron desktop application with a FastAPI bridge.
-- **V13 (Federated Learning)**: `FederatedAverager` for simultaneously training across multi-node swarms and merging LoRA weights using FedAvg.
-- **V14 (NAT Traversal)**: Implemented AutoNAT and Circuit Relay V2 for bypassing strict enterprise firewalls.
-- **V15 (Containerization)**: Complete Docker swarm deployment and packaging as a global `pip` library.
+- **V11 (MeshProtect Sandbox)**: True OS-level process isolation using `multiprocessing` to run AI models safely.
+- **V12 (Model Provenance)**: Verifying model integrity via cryptographic signatures before loading.
+- **V13 (Federated Learning)**: Robust Dataset-Weighted `FederatedAverager` for merging multi-node LoRA weights, with distributed checkpointing.
+- **V14 (API & DX)**: Full OpenAI-compatible FastAPI server (`api_server.py`) and gorgeous `rich` CLI progress reporting.
+- **V15 (Inference Hardening)**: Automatic `bitsandbytes` 8-bit quantization for VRAM efficiency, plus dynamic caching.
+- **V16 (Production Packaging)**: Optional dependency groups (`pyproject.toml`), `Dockerfile` support, and GitHub Actions CI pipelines.
 
 ### ⏳ Still Pending (Future Roadmap)
 - **True Blockchain Integration**: Currently, MeshCoins are tracked locally via receipts. The next step is tying the `CreditLedger` to a real Solana or Ethereum smart contract for real-world financial incentives.

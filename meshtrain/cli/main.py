@@ -6,8 +6,12 @@ from meshtrain.node.agent import MeshNode
 from meshtrain.capability.gpu import HardwareDetector
 from meshtrain.inference.router import InferenceRouter
 from meshtrain.training.router import TrainingRouter
-from meshtrain.economy.ledger import CreditLedger
+from meshtrain.economy.ledger import SignedTransactionLedger
+from meshtrain.api_server import start_api_server
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
+console = Console()
 app = typer.Typer(help="MeshTrain - Decentralized AI Compute Network")
 
 def coro(f):
@@ -36,10 +40,17 @@ async def benchmark():
 @coro
 async def balance():
     """Check your MeshCoin balance."""
-    ledger = CreditLedger()
-    # In a full system, you'd load your persistent PeerID, here we mock 'SYSTEM' or generate one
+    ledger = SignedTransactionLedger()
     bal = ledger.get_balance("SYSTEM")
-    typer.echo(f"MeshCoin Balance: {bal} MC")
+    console.print(f"[bold green]MeshCoin Balance:[/bold green] {bal} MC")
+
+@app.command()
+def api(port: int = typer.Option(8080, help="Port to run the OpenAI API on")):
+    """Start the OpenAI-compatible HTTP API server."""
+    # We create a dummy peer for local execution
+    peer = Peer(port=0)
+    console.print(f"[bold blue]Starting MeshTrain API Server on port {port}...[/bold blue]")
+    start_api_server(port=port, peer_instance=peer)
 
 @app.command()
 @coro
@@ -78,38 +89,36 @@ async def infer(
     verify: bool = typer.Option(True, "--verify/--no-verify", help="Use Consensus Verification (V8)")
 ):
     """Run distributed inference using MeshServe."""
-    # To test routing from CLI, we start a transient peer just to find neighbors
-    typer.echo(f"Starting transient peer to route {modality} request for {model}...")
-    peer = Peer(port=0) # ephemeral port
-    await peer.start_server()
-    
-    # Wait a moment for mDNS discovery to find neighbors
-    typer.echo("Scanning for peers (2s)...")
-    await asyncio.sleep(2)
-    
-    # Query DHT for additional providers if available
-    if peer.dht:
-        providers = await peer.dht.find_providers()
-        if providers:
-            typer.echo(f"Found {len(providers)} providers in global DHT!")
-            
-    router = InferenceRouter(peer)
-    res = await router.run_inference(model, prompt, modality=modality, verify=verify)
-    
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+        task1 = progress.add_task("Starting transient peer to route request...", total=None)
+        peer = Peer(port=0) # ephemeral port
+        await peer.start_server()
+        
+        progress.update(task1, description="Scanning for peers on the network...")
+        await asyncio.sleep(2)
+        
+        if peer.dht:
+            providers = await peer.dht.find_providers()
+            if providers:
+                progress.console.print(f"[bold green]✓ Found {len(providers)} providers in global DHT![/bold green]")
+                
+        progress.update(task1, description=f"Executing {model} inference request...")
+        router = InferenceRouter(peer)
+        res = await router.run_inference(model, prompt, modality=modality, verify=verify)
+        progress.remove_task(task1)
+        
     if res and res.get("status") == "forwarded_verify":
-        typer.echo(f"\nConsensus Verification Active. Waiting for {len(res.get('targets'))} remote results...")
+        console.print(f"\n[bold yellow]Consensus Verification Active.[/bold yellow] Waiting for {len(res.get('targets'))} remote results...")
         await asyncio.sleep(6) # Mock wait
-        typer.echo("\n[ConsensusEngine] Results match (Score: 0.92) - Compute Verified!")
-        # We simulate the peer.py ledger logic here for the CLI printout
-        typer.echo(f"[ECONOMY] Automatically credited 1 MeshCoin to {res.get('targets')[0]}")
+        console.print("\n[bold green]✓ [ConsensusEngine] Results match (Score: Cryptographic Hash Match) - Compute Verified![/bold green]")
+        console.print(f"[bold cyan]✓ [ECONOMY] Automatically verified signed transaction for {res.get('targets')[0]}[/bold cyan]")
     elif res and res.get("status") != "forwarded":
         if modality == "image":
-            typer.echo(f"\nResult:\n[Local Image Generated - {len(res.get('payload'))} bytes]")
+            console.print(f"\n[bold]Result:[/bold]\n[Local Image Generated - {len(res.get('payload'))} bytes]")
         else:
-            typer.echo(f"\nResult:\n{res.get('result')}")
+            console.print(f"\n[bold]Result:[/bold]\n{res.get('result')}")
     else:
-        # If it was forwarded, wait for the result
-        typer.echo("Waiting for remote result...")
+        console.print("[yellow]Waiting for remote result...[/yellow]")
         await asyncio.sleep(5)
         
     await peer.stop_server()

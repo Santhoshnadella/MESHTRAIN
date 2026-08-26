@@ -15,13 +15,25 @@ class MeshNode:
         self.device = "cuda" if self.torch and self.torch.cuda.is_available() else "cpu"
         self.models = {}
         self.tokenizers = {}
-        from meshtrain.security.sandbox import SecurityContext
+        from meshtrain.security.sandbox import SecurityContext, ProcessSandbox
+        from meshtrain.security.provenance import ModelVerifier
         self.security_context = SecurityContext
+        self.sandbox = ProcessSandbox(timeout=300) # 5 min timeout for heavy jobs
+        self.verifier = ModelVerifier()
         
     def start(self):
         print(f"Node {self.peer_id} starting on {self.device}...")
         
-    def _load_model(self, model_name: str):
+    def _load_model(self, model_name: str, expected_hash: str = None, signature: str = None, author_pub_key: bytes = None):
+        if expected_hash and signature and author_pub_key:
+            print(f"[{self.peer_id}] Verifying cryptographic provenance for {model_name}...")
+            is_valid = self.verifier.verify_model(expected_hash, signature, author_pub_key)
+            if not is_valid:
+                print(f"[MeshProtect] SECURITY ALERT: Model {model_name} failed cryptographic signature verification! Aborting load.")
+                self.models[model_name] = None
+                return
+            print(f"[{self.peer_id}] Provenance verified. Model signature is valid.")
+            
         if not self.transformers:
             print(f"Mock downloading model {model_name}...")
             time.sleep(1)
@@ -41,60 +53,93 @@ class MeshNode:
             self.model = None
             self.tokenizer = None
             
+def _isolated_image_generation(model_name, prompt):
+    """Runs entirely in the isolated process."""
+    try:
+        import torch
+        from diffusers import StableDiffusionPipeline
+    except ImportError:
+        return b"MOCK_PNG_DATA"
+        
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    pipe = StableDiffusionPipeline.from_pretrained(model_name, torch_dtype=torch.float16)
+    pipe = pipe.to(device)
+    image = pipe(prompt).images[0]
+    
+    import io
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    return img_byte_arr.getvalue()
+
+
     def generate_image(self, prompt: str, model_name: str = "runwayml/stable-diffusion-v1-5") -> dict:
-        """V10: Generates an image using diffusers and returns binary PNG data."""
-        if not self.torch:
-            return {"status": "mock", "payload_type": "image/png", "payload": b"MOCK_PNG_DATA"}
+        """V12: Generates an image using diffusers inside an isolated process."""
+        print(f"Submitting image generation for '{prompt}' to Process Sandbox...")
+        
+        # Execute isolated process
+        result = self.sandbox.execute(_isolated_image_generation, model_name, prompt)
+        
+        if result.get("status") == "success":
+            return {"status": "success", "payload_type": "image/png", "payload": result["data"]}
+        else:
+            print(f"Sandbox Error: {result.get('error')}")
+            return {"status": "error", "payload_type": "text/plain", "payload": str(result.get('error')).encode()}
             
-        try:
-            from diffusers import StableDiffusionPipeline
-            
-            print(f"Loading Diffusers pipeline for {model_name}...")
-            with self.security_context(trust_remote_code=False):
-                pipe = StableDiffusionPipeline.from_pretrained(model_name, torch_dtype=self.torch.float16)
-            pipe = pipe.to(self.device)
-            
-            print(f"Generating image for prompt: '{prompt}'...")
-            image = pipe(prompt).images[0]
-            
-            import io
-            img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format='PNG')
-            binary_payload = img_byte_arr.getvalue()
-            
-            return {"status": "success", "payload_type": "image/png", "payload": binary_payload}
-        except Exception as e:
-            print(f"Error generating image: {e}")
-            return {"status": "error", "payload_type": "text/plain", "payload": str(e).encode()}
-            
+def _isolated_inference(model_name, prompt, max_length):
+    """Runs entirely in the isolated process."""
+    try:
+        import torch
+        import transformers
+    except ImportError:
+        import time
+        time.sleep(1)
+        return f"Mock output for: '{prompt}'"
+        
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
+    
+    # Inference Runtime Hardening (V15): Quantization and VRAM management
+    try:
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            model_name, 
+            device_map="auto" if device == "cuda" else None,
+            load_in_8bit=True if device == "cuda" else False
+        )
+        print(f"[MeshProtect] Loaded {model_name} with 8-bit quantization for VRAM efficiency.")
+    except Exception as e:
+        print(f"[MeshProtect] 8-bit load failed ({e}), falling back to standard precision.")
+        model = transformers.AutoModelForCausalLM.from_pretrained(model_name)
+        model.to(device)
+    
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs, 
+            max_length=max_length, 
+            num_return_sequences=1,
+            do_sample=True,
+            temperature=0.7
+        )
+        
+    result_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    # Aggressively clear VRAM after inference
+    if device == "cuda":
+        torch.cuda.empty_cache()
+        
+    return result_text
+
+
     def infer(self, model_name: str, prompt: str, max_length: int = 50):
-        print(f"Preparing inference for {model_name}...")
-        if model_name not in self.models:
-            self._load_model(model_name)
-            
-        model = self.models.get(model_name)
+        print(f"Submitting inference for {model_name} to Process Sandbox...")
         
-        if model == "MOCK_MODEL" or not self.transformers:
-            print(f"Running mock inference on {model_name}...")
-            time.sleep(1)
-            return {"result": f"Mock output for: '{prompt}'"}
-            
-        print(f"Running inference on {model_name} using {self.device}...")
-        tokenizer = self.tokenizers[model_name]
+        result = self.sandbox.execute(_isolated_inference, model_name, prompt, max_length)
         
-        inputs = tokenizer(prompt, return_tensors="pt").to(self.device)
-        
-        with self.torch.no_grad():
-            outputs = model.generate(
-                **inputs, 
-                max_length=max_length, 
-                num_return_sequences=1,
-                do_sample=True,
-                temperature=0.7
-            )
-            
-        result_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return {"result": result_text}
+        if result.get("status") == "success":
+            return {"result": result["data"]}
+        else:
+            print(f"Sandbox Error: {result.get('error')}")
+            return {"result": f"Error during execution: {result.get('error')}"}
         
     def tune(self, model_name: str, dataset: str):
         print(f"Preparing fine-tuning for {model_name} on dataset {dataset}...")

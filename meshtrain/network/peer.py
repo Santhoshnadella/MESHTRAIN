@@ -9,9 +9,10 @@ from meshtrain.node.agent import MeshNode
 from meshtrain.capability.gpu import HardwareDetector
 from meshtrain.storage.content_store import ContentStore
 from meshtrain.finetuning.lora import LoRATuner
-from meshtrain.economy.ledger import CreditLedger
+from meshtrain.economy.ledger import SignedTransactionLedger, DynamicPricer
 import os
 import base64
+import uuid
 
 PROTOCOL_ID = "/meshtrain/1.0.0"
 
@@ -21,7 +22,27 @@ class Peer:
     def __init__(self, port: int = 8001, use_relay: bool = False):
         self.port = port
         self.use_relay = use_relay
-        self.keypair = create_new_key_pair()
+        
+        # Identity persistence
+        identity_path = ".meshtrain/identity.key"
+        os.makedirs(".meshtrain", exist_ok=True)
+        if os.path.exists(identity_path):
+            try:
+                with open(identity_path, "rb") as f:
+                    key_bytes = f.read()
+                    # py-libp2p ed25519 parsing
+                    from libp2p.crypto.ed25519 import Ed25519PrivateKey
+                    priv_key = Ed25519PrivateKey.unmarshal(key_bytes)
+                    self.keypair = priv_key.generate_key_pair() # gets both pub/priv
+            except Exception as e:
+                print(f"Failed to load identity: {e}. Generating new one.")
+                self.keypair = create_new_key_pair()
+        else:
+            self.keypair = create_new_key_pair()
+            # Save for next time
+            with open(identity_path, "wb") as f:
+                f.write(self.keypair.private_key.marshal())
+                
         self.host = None
         self.connected_peers = {}
         self.peer_capabilities = {}
@@ -29,11 +50,34 @@ class Peer:
         self.ai_node = MeshNode()
         self.content_store = ContentStore()
         self.lora_tuner = LoRATuner()
-        self.ledger = CreditLedger()
+        self.ledger = SignedTransactionLedger()
+        self.pricer = DynamicPricer()
         
         # Discovery and DHT are instantiated after we know our PeerID
         self.discovery = None
         self.dht = None
+        
+        self.pending_requests = {}
+        
+        # Rate Limiting & Quotas (Max 5 requests per minute per peer)
+        self.peer_request_counts = {}
+        
+    async def _check_rate_limit(self, peer_id: str) -> bool:
+        """Returns True if the request is allowed, False if rate limited."""
+        import time
+        now = time.time()
+        
+        if peer_id not in self.peer_request_counts:
+            self.peer_request_counts[peer_id] = []
+            
+        # Clean up requests older than 60 seconds
+        self.peer_request_counts[peer_id] = [t for t in self.peer_request_counts[peer_id] if now - t < 60]
+        
+        if len(self.peer_request_counts[peer_id]) >= 5:
+            return False
+            
+        self.peer_request_counts[peer_id].append(now)
+        return True
 
     async def start_server(self):
         print(f"[{self.peer_id}] Starting py-libp2p host on port {self.port}...")
@@ -58,6 +102,9 @@ class Peer:
         
         listen_addresses = [str(addr) for addr in self.host.get_addrs()]
         print(f"[{self.peer_id}] Libp2p Node listening on: {listen_addresses}")
+        
+        # Start background health check loop
+        asyncio.create_task(self._health_check_loop())
         
         # Start discovery
         self.discovery = Discovery(self.peer_id, self.port, str(listen_addresses[0]) if listen_addresses else "")
@@ -95,12 +142,29 @@ class Peer:
                 reply = json.dumps({"type": "HANDSHAKE_ACK", "peer_id": self.peer_id, "hardware": self.local_hw})
                 await stream.write(reply.encode())
                 
+            elif message.get("type") == "PING":
+                reply = json.dumps({"type": "PONG", "peer_id": self.peer_id})
+                await stream.write(reply.encode())
+                
             elif message.get("type") == "INFERENCE_REQUEST":
                 req_id = message.get("request_id")
                 model_name = message.get("model")
                 prompt = message.get("prompt")
                 modality = message.get("modality", "text")
-                sender_id = message.get("sender")
+                sender_id = message.get("sender", remote_peer)
+                
+                # Check rate limits
+                if not await self._check_rate_limit(remote_peer):
+                    print(f"[{self.peer_id}] RATE LIMIT EXCEEDED for peer {remote_peer}")
+                    reply = json.dumps({
+                        "type": "INFERENCE_RESULT",
+                        "request_id": req_id,
+                        "payload_type": "text/plain",
+                        "payload": "Error: Rate limit exceeded (Max 5 requests/min).",
+                        "worker_peer_id": self.peer_id
+                    })
+                    await stream.write(reply.encode())
+                    return
                 
                 print(f"[{self.peer_id}] Received INFERENCE_REQUEST ({modality}) from {sender_id} for {model_name}")
                 
@@ -128,6 +192,18 @@ class Peer:
                 req_id = message.get("request_id")
                 model_name = message.get("model")
                 manifest_hash = message.get("dataset_manifest_hash")
+                
+                # Check rate limits for training (stricter: max 1 per minute)
+                if not await self._check_rate_limit(remote_peer):
+                    print(f"[{self.peer_id}] RATE LIMIT EXCEEDED for training from peer {remote_peer}")
+                    reply = json.dumps({
+                        "type": "TRAINING_RESULT",
+                        "request_id": req_id,
+                        "status": "error",
+                        "error_message": "Rate limit exceeded."
+                    })
+                    await stream.write(reply.encode())
+                    return
                 
                 print(f"[{self.peer_id}] Received TRAINING_REQUEST for {model_name} with dataset {manifest_hash}")
                 
@@ -240,43 +316,93 @@ class Peer:
                     # In MVP we just acknowledge it
                     reply = json.dumps({"type": "PIN_RESPONSE", "chunk_hash": chunk_hash, "success": True})
                     await stream.write(reply.encode())
+                elif message.get("type") == "PONG":
+                    pass # Handled by the stream being alive
         except asyncio.TimeoutError:
-            print(f"[{self.peer_id}] Connection to {remote_peer} timed out.")
+            print(f"[{self.peer_id}] Connection to {remote_peer} timed out. Disconnecting.")
+            self._disconnect_peer(remote_peer)
         except Exception:
-            pass
+            self._disconnect_peer(remote_peer)
 
-    async def send_training_request(self, target_peer: str, model: str, manifest_hash: str):
+    def _disconnect_peer(self, peer_id: str):
+        if peer_id in self.connected_peers:
+            del self.connected_peers[peer_id]
+        if peer_id in self.peer_capabilities:
+            del self.peer_capabilities[peer_id]
+        print(f"[{self.peer_id}] Disconnected from {peer_id}.")
+
+    async def _health_check_loop(self):
+        """Periodically pings all connected peers to ensure they are alive."""
+        while True:
+            await asyncio.sleep(30)
+            dead_peers = []
+            for peer_id, stream in self.connected_peers.items():
+                if peer_id == self.peer_id: continue
+                try:
+                    ping = json.dumps({"type": "PING", "peer_id": self.peer_id})
+                    await stream.write(ping.encode())
+                except Exception:
+                    dead_peers.append(peer_id)
+                    
+            for peer_id in dead_peers:
+                print(f"[{self.peer_id}] Peer {peer_id} failed health check.")
+                self._disconnect_peer(peer_id)
+
+    async def send_training_request(self, target_peer: str, model: str, manifest_hash: str, max_retries: int = 3):
         if target_peer not in self.connected_peers:
             print(f"Error: Not connected to {target_peer}")
             return
             
-        stream = self.connected_peers[target_peer]
+        req_id = f"train-{uuid.uuid4().hex[:8]}"
         req = json.dumps({
             "type": "TRAINING_REQUEST",
-            "request_id": "train-1",
+            "request_id": req_id,
             "sender": self.peer_id,
             "model": model,
             "dataset_manifest_hash": manifest_hash
         })
-        await stream.write(req.encode())
-        print(f"[{self.peer_id}] Sent TRAINING_REQUEST to {target_peer}. Waiting for 24h timeout...")
+        
+        for attempt in range(max_retries):
+            try:
+                stream = self.connected_peers[target_peer]
+                await stream.write(req.encode())
+                print(f"[{self.peer_id}] Sent TRAINING_REQUEST ({req_id}) to {target_peer} (Attempt {attempt+1}). Waiting for 24h timeout...")
+                # In a real implementation we would track this req_id and use an asyncio.Event to wait for it.
+                return req_id
+            except Exception as e:
+                print(f"[{self.peer_id}] Failed to send request, attempt {attempt+1}/{max_retries}: {e}")
+                await asyncio.sleep(2 ** attempt)
+                
+        print(f"[{self.peer_id}] Failed to send TRAINING_REQUEST to {target_peer} after {max_retries} attempts.")
+        return None
 
-    async def send_inference_request(self, target_peer: str, model: str, prompt: str, modality: str = "text"):
+    async def send_inference_request(self, target_peer: str, model: str, prompt: str, modality: str = "text", max_retries: int = 3):
         if target_peer not in self.connected_peers:
             print(f"Error: Not connected to {target_peer}")
             return
             
-        stream = self.connected_peers[target_peer]
+        req_id = f"req-{uuid.uuid4().hex[:8]}"
         req = json.dumps({
             "type": "INFERENCE_REQUEST",
-            "request_id": "req-1",
+            "request_id": req_id,
             "sender": self.peer_id,
             "model": model,
             "prompt": prompt,
             "modality": modality
         })
-        await stream.write(req.encode())
-        print(f"[{self.peer_id}] Sent request to {target_peer}. Waiting for result...")
+        
+        for attempt in range(max_retries):
+            try:
+                stream = self.connected_peers[target_peer]
+                await stream.write(req.encode())
+                print(f"[{self.peer_id}] Sent INFERENCE_REQUEST ({req_id}) to {target_peer} (Attempt {attempt+1}). Waiting for result...")
+                return req_id
+            except Exception as e:
+                print(f"[{self.peer_id}] Failed to send inference request, attempt {attempt+1}/{max_retries}: {e}")
+                await asyncio.sleep(2 ** attempt)
+                
+        print(f"[{self.peer_id}] Failed to send INFERENCE_REQUEST to {target_peer} after {max_retries} attempts.")
+        return None
         
     async def pin_chunk_to_dht(self, chunk_hash: str, chunk_path: str):
         """MeshDrive (V7): Sends a chunk to connected peers for pinning."""

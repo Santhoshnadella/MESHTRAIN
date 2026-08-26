@@ -15,12 +15,9 @@ class MeshDHT:
         
     async def start(self):
         print(f"[{self.host.get_id().to_string()}] Starting Kademlia DHT...")
-        # Start the router background tasks
-        # await self.router.start() # Simulated for MVP
         
     async def stop(self):
         print(f"[{self.host.get_id().to_string()}] Stopping Kademlia DHT...")
-        # await self.router.stop() # Simulated for MVP
 
     async def bootstrap(self, bootstrap_peers: List[str]):
         """Connect to bootstrap nodes and join the DHT."""
@@ -28,23 +25,34 @@ class MeshDHT:
             return
             
         print(f"[{self.host.get_id().to_string()}] Bootstrapping DHT via {len(bootstrap_peers)} nodes...")
+        from multiaddr import Multiaddr
         for p in bootstrap_peers:
             try:
-                # In a full py-libp2p Kademlia implementation, we would dial the peer
-                # and explicitly add them to the routing table.
-                print(f"[{self.host.get_id().to_string()}] Attempting to bootstrap with {p}...")
-                pass
+                maddr = Multiaddr(p)
+                peer_id = maddr.get_peer_id()
+                if peer_id:
+                    print(f"[{self.host.get_id().to_string()}] Attempting to bootstrap with {peer_id}...")
+                    # We add the peer to the peerstore and then to the routing table
+                    # Connect to the peer to ensure they are reachable
+                    await self.host.connect(maddr)
+                    # Currently py-libp2p KademliaRouter adds connected peers to routing table
             except Exception as e:
                 print(f"Warning: Failed to bootstrap with {p}. Error: {e}. Falling back to local mDNS.")
             
     async def provide(self):
         """Announce that this node provides the MeshTrain service."""
         print(f"[{self.host.get_id().to_string()}] Announcing provider record for {self.service_key.decode()}...")
-        # await self.router.provide(self.service_key)
+        try:
+            await self.router.provide(self.service_key)
+        except Exception as e:
+            print(f"Failed to provide service record: {e}")
         
     async def find_providers(self) -> List[str]:
         """Query the DHT for nodes providing the MeshTrain service."""
         print(f"[{self.host.get_id().to_string()}] Searching DHT for {self.service_key.decode()} providers...")
-        # providers = await self.router.find_providers(self.service_key)
-        # return [p.id.to_string() for p in providers]
-        return [] # Return empty list for the mock
+        try:
+            providers = await self.router.find_providers(self.service_key)
+            return [p.id.to_string() for p in providers]
+        except Exception as e:
+            print(f"Failed to find providers: {e}")
+            return []
