@@ -55,6 +55,43 @@ Once the compute is verified, your node's local SQLite `CreditLedger` cryptograp
 
 ---
 
+## 🛡️ Security Architecture (Technical Deep Dive)
+
+MeshTrain operates on a **Zero-Trust** philosophy. Because you are executing AI models from anonymous nodes across the internet, security is paramount:
+
+1. **Encrypted Transport**: All peer-to-peer traffic is multiplexed and encrypted using `libp2p`'s native SECIO / TLS-like handshakes. Eavesdropping on dataset transmission is mathematically impossible.
+2. **MeshProtect (Sandbox Execution)**: Loading a model in Python (via `transformers`) is notoriously dangerous because models can contain malicious pickled Python code. When a worker node receives a request, the `MeshNode` execution engine is wrapped in a `SecurityContext` that forcefully strips `trust_remote_code=True` at the environment level. Remote arbitrary code execution (RCE) is blocked.
+3. **Consensus Verification (Proof of Compute)**: To prevent a malicious worker node from returning random garbage text to farm MeshCoins, the `InferenceRouter` utilizes a Dual-Routing protocol. It sends the prompt to Node A and Node B. The local `ConsensusEngine` mathematically analyzes the structural similarity of the two responses using `difflib.SequenceMatcher`. If the threshold drops below 85%, the results are rejected, the nodes are flagged, and no MeshCoins are minted.
+
+---
+
+## 🤝 Contributing Guide
+
+We welcome contributions from the community! To get started:
+
+1. **Fork and Clone**:
+   ```bash
+   git clone https://github.com/Santhoshnadella/MESHTRAIN.git
+   cd MESHTRAIN
+   ```
+2. **Set up a Virtual Environment**:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -e .
+   ```
+3. **Make your Changes**: Create a new branch (`git checkout -b feature/amazing-idea`).
+4. **Commit your Code**:
+   - Write clear, descriptive commit messages.
+   - Example: `git commit -m "feat(security): enhance consensus algorithm threshold"`
+5. **Push and Open a PR**:
+   ```bash
+   git push origin feature/amazing-idea
+   ```
+   Head to GitHub and open a Pull Request. We review all PRs within 48 hours!
+
+---
+
 ## 📂 Developer Folder Structure
 
 If you want to contribute, here is how the codebase is organized:
