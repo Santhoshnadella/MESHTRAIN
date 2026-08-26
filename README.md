@@ -19,6 +19,28 @@ No central servers. No AWS bills. No corporate gatekeepers.
 
 ---
 
+## 🌟 Core Capabilities
+
+### 1. Decentralized Inference (Running Models)
+- **Text Generation:** You can send a prompt to the network, and a remote GPU will load a HuggingFace LLM (like Llama-3 or GPT-2) and stream the text back to you.
+- **Image Generation (Multi-Modal):** We added support for binary payloads, meaning you can send a prompt to the network and a remote GPU will run `diffusers` (Stable Diffusion) and return a raw PNG image.
+
+### 2. Distributed Fine-Tuning (Training)
+You can provide a custom `.jsonl` dataset and a target model. MeshTrain will send it to a remote GPU with enough VRAM, train a LoRA adapter on their hardware, and send the completed `.bin` adapter file back to you.
+
+### 3. True Federated Learning (Swarm Training)
+If your dataset is huge, you can specify `--peers 5`. MeshTrain will chop your dataset into 5 pieces, send them to 5 different GPUs around the world simultaneously, wait for all of them to finish training, and then mathematically average their weights together using the `FederatedAverager`.
+
+### 4. Decentralized Dataset Hosting (MeshDrive)
+Before a node can train, it needs the data. You built the `ContentStore` which acts like BitTorrent. You can upload gigabytes of training data to the network, and peers can request chunks of it securely without overwhelming a single server.
+
+### 5. Monetizing Idle Hardware (GPU Renting)
+Anyone with a gaming PC can just run `meshtrain start` and walk away. Their PC will passively accept safe, sandboxed jobs from the internet and automatically accumulate MeshCoins into their local SQLite ledger while they sleep.
+
+*You didn't just build a tool to run AI; you built an entire decentralized cloud provider!*
+
+---
+
 ## 🛠️ The Tech Stack
 Built for speed, security, and scalability.
 - **Core App**: Python 3.10+
