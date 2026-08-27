@@ -35,3 +35,6 @@ all = ["meshtrain[ml,api]"]
 
 [project.scripts]
 meshtrain = "meshtrain.cli.main:app"
+
+[tool.setuptools]
+packages = ["meshtrain"]
