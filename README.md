@@ -201,4 +201,8 @@ MeshTrain is being built in structured phases. Here is the current progress:
 - **V16 (Production Packaging)**: Optional dependency groups (`pyproject.toml`), `Dockerfile` support, and GitHub Actions CI pipelines.
 
 ### ⏳ Still Pending (Future Roadmap)
-- **True Blockchain Integration**: Currently, MeshCoins are tracked locally via receipts. The next step is tying the `CreditLedger` to a real Solana or Ethereum smart contract for real-world financial incentives.
+- **Solana Devnet Deployment**: The Python codebase and Rust smart contracts are complete. The final step is to build, deploy, and link the Solana smart contract (see `the_big_picture.md` for exact steps).
+- **Mainnet Migration**: Migrating from Devnet to Mainnet-Beta to give MeshCoins real financial value.
+- **DAO Integration**: Handing treasury control to a smart contract DAO.
+- **zk-SNARKs**: Upgrading verification to zero-knowledge proofs.
+- **Arbitrary Docker Workloads**: Expanding beyond AI to general global compute.
