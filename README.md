@@ -1,4 +1,4 @@
-![MeshTrain Architecture Banner](banner.jpg)
+![MeshTrain Mascot Banner](mascot_banner.png)
 
 # MeshTrain: The Decentralized AI Compute Mesh
 
@@ -187,22 +187,14 @@ meshtrain tune gpt2 my_dataset.jsonl
 MeshTrain is being built in structured phases. Here is the current progress:
 
 ### ✅ Ready to Use (Completed)
-- **V0-V5 (Foundations & Networking)**: Kademlia DHT, `libp2p` secure encrypted streams, auto-reconnects, and hardware benchmarking.
-- **V6 (MeshTune)**: Distributed LoRA fine-tuning utilizing HuggingFace `peft`. Remote nodes train adapters and stream the binary weights back over the network.
-- **V7 (MeshDrive)**: Content-addressed storage for chunking and replicating datasets across the P2P swarm.
-- **V8 (Proof of Compute)**: `ConsensusEngine` utilizing `SHA-256` cryptographic hash majority voting.
-- **V9 (Tokenomics)**: `SignedTransactionLedger` with `ed25519` cryptographic signatures replacing the old SQLite mock.
-- **V10 (Multi-Modal)**: Binary payload streaming to support `diffusers` image generation alongside text.
-- **V11 (MeshProtect Sandbox)**: True OS-level process isolation using `multiprocessing` to run AI models safely.
-- **V12 (Model Provenance)**: Verifying model integrity via cryptographic signatures before loading.
-- **V13 (Federated Learning)**: Robust Dataset-Weighted `FederatedAverager` for merging multi-node LoRA weights, with distributed checkpointing.
-- **V14 (API & DX)**: Full OpenAI-compatible FastAPI server (`api_server.py`) and gorgeous `rich` CLI progress reporting.
-- **V15 (Inference Hardening)**: Automatic `bitsandbytes` 8-bit quantization for VRAM efficiency, plus dynamic caching.
-- **V16 (Production Packaging)**: Optional dependency groups (`pyproject.toml`), `Dockerfile` support, and GitHub Actions CI pipelines.
+- **V0-V15 (Core Engine)**: Fully functional Kademlia DHT, `MeshTune` LoRA fine-tuning, `MeshDrive` chunking, `MeshProtect` isolation, and Proof of Compute algorithms.
+- **V16 (Premium UI)**: A beautiful Electron-based Desktop GUI and FastAPI backend for easy monitoring and inference execution.
+- **V17 (Solana Devnet Integration)**: We have officially deployed the `meshcoin` Anchor smart contract to the Solana Devnet! Real Devnet wallets are now generated, and transactions are executed to the blockchain. (Note: Native Windows compilation currently requires 3GB+ of space and Developer Mode).
+- **V18 (Mobile App)**: JNI and FFI bindings connecting the React Native mobile app to the lightweight Rust `libp2p` node are fully implemented.
+- **V19 (Native Windows Support)**: Included an automated PowerShell installer (`install_native_windows.ps1`) to seamlessly configure the C++ Build Tools and PyTorch CUDA environment on Windows without manual intervention.
+- **V20 (ZK Proofs)**: Integrated RISC Zero ZKVM to generate cryptographic STARK receipts for verifying heavy inference workloads via Hybrid Consensus.
 
 ### ⏳ Still Pending (Future Roadmap)
-- **Solana Devnet Deployment**: The Python codebase and Rust smart contracts are complete. The final step is to build, deploy, and link the Solana smart contract (see `the_big_picture.md` for exact steps).
 - **Mainnet Migration**: Migrating from Devnet to Mainnet-Beta to give MeshCoins real financial value.
 - **DAO Integration**: Handing treasury control to a smart contract DAO.
-- **zk-SNARKs**: Upgrading verification to zero-knowledge proofs.
 - **Arbitrary Docker Workloads**: Expanding beyond AI to general global compute.

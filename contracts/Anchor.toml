@@ -5,7 +5,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-meshcoin = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+meshcoin = "FqD8y6HqA52554eJj9a8mD1XfAgh7vQp3R79h9U2M2Lw"
 
 [registry]
 url = "https://api.apr.dev"

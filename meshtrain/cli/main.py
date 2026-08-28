@@ -14,8 +14,10 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 console = Console()
 app = typer.Typer(help="MeshTrain - Decentralized AI Compute Network")
 
+import functools
 def coro(f):
     """Wrapper to run Typer commands asynchronously."""
+    @functools.wraps(f)
     def wrapper(*args, **kwargs):
         return asyncio.run(f(*args, **kwargs))
     return wrapper
@@ -52,7 +54,7 @@ def api(port: int = typer.Option(8080, help="Port to run the OpenAI API on")):
     console.print(f"[bold blue]Starting MeshTrain API Server on port {port}...[/bold blue]")
     start_api_server(port=port, peer_instance=peer)
 
-@app.command()
+@app.command(name="start")
 @coro
 async def start(
     port: int = typer.Option(8001, help="Port to run the P2P host on"),

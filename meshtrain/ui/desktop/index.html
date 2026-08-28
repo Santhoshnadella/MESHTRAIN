@@ -39,6 +39,9 @@
       <div class="glass-panel result-panel">
         <h2>Result</h2>
         <div id="resultBox" class="result-box">Waiting for input...</div>
+        <div id="txContainer" style="display: none; margin-top: 15px; font-size: 0.9em;">
+          <a id="txLink" href="#" target="_blank" style="color: #00ff88; text-decoration: none;">View Transaction on Solana Explorer</a>
+        </div>
       </div>
     </main>
   </div>
@@ -77,8 +80,19 @@
         });
         const data = await res.json();
         resultBox.innerText = data.result;
+        
+        // Render Devnet Explorer transaction URL if available
+        const txContainer = document.getElementById('txContainer');
+        const txLink = document.getElementById('txLink');
+        if (data.tx_signature) {
+          txLink.href = `https://explorer.solana.com/tx/${data.tx_signature}?cluster=devnet`;
+          txContainer.style.display = "block";
+        } else {
+          txContainer.style.display = "none";
+        }
       } catch (e) {
         resultBox.innerText = "Error connecting to network.";
+        document.getElementById('txContainer').style.display = "none";
       } finally {
         resultBox.classList.remove("pulsing");
         btn.disabled = false;

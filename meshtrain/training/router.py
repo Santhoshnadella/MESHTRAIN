@@ -16,7 +16,6 @@ class TrainingRouter:
         self.local_tuner = LoRATuner()
         self.store = ContentStore()
         
-    async def run_training(self, model: str, dataset_path: str, required_vram_gb: float = 12.0):
     async def run_training(self, model: str, dataset_path: str, num_peers: int = 1):
         print(f"Routing training request for {model} to {num_peers} peer(s).")
         

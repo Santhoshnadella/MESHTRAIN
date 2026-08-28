@@ -10,7 +10,7 @@ solana_client = Client(SOLANA_RPC_URL)
 
 # Our custom Smart Contract Program ID deployed on Devnet
 # This matches the placeholder in Anchor.toml
-MESHCOIN_PROGRAM_ID = Pubkey.from_string("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS")
+MESHCOIN_PROGRAM_ID = Pubkey.from_string("FqD8y6HqA52554eJj9a8mD1XfAgh7vQp3R79h9U2M2Lw")
 
 def get_solana_keypair(identity_file: str = ".meshtrain/identity.key") -> Keypair:
     """

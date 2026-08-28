@@ -1,0 +1,56 @@
+# Goal Description
+
+Expand MeshTrain to support a mobile application ("THE APP") that allows iOS and Android smartphones to participate in the decentralized AI compute mesh. The app should be fully featured, allowing users to request AI generations, host lightweight models, and earn MeshCoins from their phone.
+
+## User Review Required
+
+> [!WARNING]
+> **Mobile Hardware Limitations**
+> Smartphones cannot run massive 8GB+ VRAM models like Stable Diffusion 1.5 or 7B Parameter LLMs easily. They *can*, however, run highly quantized models (e.g., using `llama.cpp` or ONNX Runtime) and act as powerful requester nodes. 
+> We need to decide if mobile nodes will primarily be **Clients** (requesting compute and paying MeshCoins) or **Workers** (running lightweight tasks and earning MeshCoins). 
+
+> [!IMPORTANT]
+> **Battery and OS Constraints**
+> iOS and Android aggressively kill background tasks to save battery. Maintaining a persistent P2P `libp2p` connection in the background will require special OS permissions and wake-locks, or shifting the node to a "Client-Only" mode when backgrounded.
+
+## Open Questions
+
+1. **Technology Stack:** Should we build the app natively (Swift/Kotlin), or use a cross-platform framework like React Native, Flutter, or Tauri (which supports Rust)? *Recommendation: React Native or Tauri for cross-platform support.*
+2. **Backend Engine:** Currently, MeshTrain uses Python (`transformers`, `diffusers`). Python is very difficult to run natively on iOS/Android. Would you prefer to use a mobile-friendly inference engine like **ONNX Runtime Mobile** or **llama.cpp (C++)** bound to the mobile app for inference?
+3. **P2P Implementation:** `libp2p` has Rust and Go implementations, but the Python one is not mobile friendly. We will need to write the networking layer in Rust and compile it for iOS/Android. Are you comfortable expanding into Rust for the mobile core?
+
+## Proposed Architecture & Changes
+
+The mobile app will require its own repository or a dedicated `/apps/mobile` directory, diverging from the Python backend.
+
+### 1. Mobile UI / Client Layer
+A cross-platform React Native or Tauri frontend that replicates the Desktop UI's Glassmorphism design. It will allow users to:
+- Connect to the Devnet/Mainnet Solana wallet.
+- Submit inference jobs (Text & Image) to the global mesh.
+- View real-time P2P peer maps.
+
+### 2. Mobile P2P Networking (Rust Core)
+Since Python `libp2p` doesn't cross-compile to mobile well, we will write a lightweight Rust core that handles:
+- Kademlia DHT Discovery
+- Multiplexed P2P Connections
+- GossipSub for task routing
+*This Rust core will be compiled via FFI/JNI to be called directly by the mobile app.*
+
+### 3. Mobile Inference Engine
+Instead of PyTorch, the app will use hardware-accelerated mobile inference:
+- **CoreML (iOS) / NNAPI (Android)**
+- Use quantized models (e.g., Q4_K_M) allowing 1.5B or 3B parameter models (like Llama-3 8B heavily quantized, or Phi-3) to run on high-end phones.
+- Phones will advertise a specific "Mobile Compute" capability to the network so they only receive tasks they can handle.
+
+### 4. Solana Wallet Integration
+Integrate `solana-web3.js` or a Rust-based Solana client to manage the user's `ed25519` keypair directly on the phone's secure enclave (Keychain/Keystore), ensuring their MeshCoins are completely secure.
+
+## Verification Plan
+
+### Automated Tests
+- Integration tests for the Rust mobile P2P core communicating with the existing Python Desktop nodes.
+
+### Manual Verification
+- Deploy to an Android Emulator and iOS Simulator.
+- Verify the mobile node successfully appears in the Desktop app's peer list.
+- Send a lightweight prompt from the Desktop to the Mobile phone and verify the phone returns the AI response and earns a MeshCoin.

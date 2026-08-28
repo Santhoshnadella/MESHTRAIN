@@ -57,11 +57,17 @@ class InferenceRouter:
                 return {"status": "forwarded", "target": target_peer_id}
                 
         else:
-            # V8 Proof of Compute: Consensus Verification
-            print(f"Consensus Verification (V8): Forwarding to {target_peer_ids[0]} AND {target_peer_ids[1]}.")
-            
-            # Create futures to wait for both responses
-            await self.peer.send_inference_request(target_peer_ids[0], model, prompt, modality)
-            await self.peer.send_inference_request(target_peer_ids[1], model, prompt, modality)
-            
-            return {"status": "forwarded_verify", "targets": target_peer_ids}
+            # Hybrid Consensus: Hash for fast (text), ZK for heavy (image/large vram)
+            if modality == "image" or required_vram_gb >= 4.0:
+                print(f"Hybrid Consensus (ZK): Forwarding heavy task to {target_peer_ids[0]}.")
+                print("Will verify response using RISC Zero ZKVM STARK Proof.")
+                # We send to a single peer and ask it to generate a ZK proof
+                await self.peer.send_inference_request(target_peer_ids[0], model, prompt, modality, require_zk_proof=True)
+                return {"status": "forwarded_verify_zk", "targets": [target_peer_ids[0]]}
+            else:
+                print(f"Hybrid Consensus (Hash): Forwarding to {target_peer_ids[0]} AND {target_peer_ids[1]} for fast verification.")
+                # Create futures to wait for both responses
+                await self.peer.send_inference_request(target_peer_ids[0], model, prompt, modality)
+                await self.peer.send_inference_request(target_peer_ids[1], model, prompt, modality)
+                
+                return {"status": "forwarded_verify_hash", "targets": target_peer_ids}

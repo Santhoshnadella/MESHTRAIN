@@ -1,6 +1,15 @@
 import asyncio
 from typing import List, Optional
-from libp2p.routing.kademlia.kademlia_peer_router import KademliaPeerRouter
+try:
+    from libp2p.routing.kademlia.kademlia_peer_router import KademliaPeerRouter
+except ImportError:
+    class KademliaPeerRouter:
+        def __init__(self, host):
+            pass
+        async def provide(self, key):
+            pass
+        async def find_providers(self, key):
+            return []
 
 class MeshDHT:
     """Kademlia DHT for MeshTrain Peer Discovery (V3)."""
